@@ -15,6 +15,8 @@ React + TypeScript frontend for the Diabetes Prediction ML System.
 
 - **Dashboard**: Overview of system status, models, and statistics
 - **Single Prediction**: Predict diabetes risk for one patient with SHAP explanations
+  - **Results & Insights**: Comprehensive analysis with visualizations
+  - **Interactive Explorer**: Real-time feature exploration and what-if scenarios
 - **Batch Analysis**: Analyze multiple patients at once
 - **Model Comparison**: Compare predictions from all ML models
 - **About Models**: Learn about Decision Tree, Random Forest, and XGBoost
@@ -108,6 +110,63 @@ frontend/
 - `npm run lint` - Lint code with ESLint
 
 ## Components
+
+### Feature Components
+
+#### FeatureExplorer
+Interactive component for real-time feature exploration and what-if analysis:
+
+```tsx
+<FeatureExplorer initialData={patientData} />
+```
+
+**Features:**
+- **Real-time Predictions**: Adjusting sliders triggers debounced predictions (500ms delay)
+- **Risk Meter**: Visual gauge showing current diabetes risk percentage
+- **What-if Scenarios**: Quick action buttons (lose weight, lower glucose, younger age)
+- **Feature Analysis**: Partial dependence plots showing how individual features affect risk
+- **Scenario Comparison**: Save up to 3 scenarios and compare them side-by-side
+- **Interactive Sliders**: All 8 patient features with visual feedback
+- **Animated Transitions**: Smooth color changes and SVG animations (700ms duration)
+
+**Props:**
+- `initialData`: Optional `PatientInput` object to pre-populate feature values
+
+#### PredictionForm
+Comprehensive input form with dual inputs (sliders + number fields):
+
+```tsx
+<PredictionForm
+  onPredictionComplete={(result) => console.log(result)}
+  onPredictionStart={() => console.log('Started')}
+/>
+```
+
+**Features:**
+- Dual input controls (range slider + number input)
+- Real-time validation with error messages
+- Visual range indicators (normal ranges highlighted)
+- Color coding (green/yellow/red based on risk)
+- Tooltips with feature descriptions
+- Example patient presets (high/low/moderate risk)
+- Random patient generator
+
+#### PredictionResults
+Multi-section results dashboard with visualizations:
+
+```tsx
+<PredictionResults result={comprehensivePrediction} />
+```
+
+**Sections:**
+- Risk assessment with circular progress (Chart.js doughnut)
+- Model predictions comparison table
+- Feature importance horizontal bar chart
+- SHAP waterfall explanation (Plotly)
+- Risk factors grid with modifiable/non-modifiable indicators
+- Personalized recommendations with priority levels
+- Similar patients comparison
+- Export functionality (PDF, email, local storage)
 
 ### Common Components
 

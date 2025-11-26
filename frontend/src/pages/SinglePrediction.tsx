@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { FiInfo } from 'react-icons/fi';
+import { FiInfo, FiBarChart2, FiSliders } from 'react-icons/fi';
 import { Card } from '@/components/common';
 import PredictionForm from '@/components/PredictionForm';
 import PredictionResults from '@/components/PredictionResults';
+import FeatureExplorer from '@/components/FeatureExplorer';
 import type { ComprehensivePredictionOutput } from '@/types/api';
 
 const SinglePrediction: React.FC = () => {
   const [predictionResult, setPredictionResult] =
     useState<ComprehensivePredictionOutput | null>(null);
   const [showResults, setShowResults] = useState(false);
+  const [activeTab, setActiveTab] = useState<'results' | 'explorer'>('results');
 
   const handlePredictionComplete = (result: ComprehensivePredictionOutput) => {
     setPredictionResult(result);
@@ -86,18 +88,69 @@ const SinglePrediction: React.FC = () => {
         />
       </Card>
 
-      {/* Results Section */}
+      {/* Results Section with Tabs */}
       {showResults && predictionResult && (
-        <div id="results-section" className="scroll-mt-6">
-          <div className="mb-4">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Prediction Results
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Comprehensive analysis with model predictions and recommendations
-            </p>
+        <div id="results-section" className="scroll-mt-6 space-y-4">
+          {/* Header with Tabs */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  Prediction Analysis
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  {activeTab === 'results'
+                    ? 'Comprehensive analysis with model predictions and recommendations'
+                    : 'Interactive feature exploration and what-if scenarios'}
+                </p>
+              </div>
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setActiveTab('results')}
+                className={`px-4 py-2 font-medium text-sm transition-colors relative ${
+                  activeTab === 'results'
+                    ? 'text-primary-600 dark:text-primary-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <FiBarChart2 className="w-4 h-4" />
+                  <span>Results & Insights</span>
+                </div>
+                {activeTab === 'results' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('explorer')}
+                className={`px-4 py-2 font-medium text-sm transition-colors relative ${
+                  activeTab === 'explorer'
+                    ? 'text-primary-600 dark:text-primary-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <FiSliders className="w-4 h-4" />
+                  <span>Interactive Explorer</span>
+                </div>
+                {activeTab === 'explorer' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 dark:bg-primary-400" />
+                )}
+              </button>
+            </div>
           </div>
-          <PredictionResults result={predictionResult} />
+
+          {/* Tab Content */}
+          <div className="min-h-[400px]">
+            {activeTab === 'results' ? (
+              <PredictionResults result={predictionResult} />
+            ) : (
+              <FeatureExplorer initialData={predictionResult.input_data} />
+            )}
+          </div>
         </div>
       )}
 
