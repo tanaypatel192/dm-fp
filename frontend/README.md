@@ -17,7 +17,14 @@ React + TypeScript frontend for the Diabetes Prediction ML System.
 - **Single Prediction**: Predict diabetes risk for one patient with SHAP explanations
   - **Results & Insights**: Comprehensive analysis with visualizations
   - **Interactive Explorer**: Real-time feature exploration and what-if scenarios
-- **Batch Analysis**: Analyze multiple patients at once
+- **Batch Analysis**: Upload CSV files to analyze multiple patients at once
+  - CSV file upload with drag-and-drop
+  - Data preview before processing
+  - Batch processing with progress tracking
+  - Statistics dashboard with risk distribution charts
+  - Sortable and filterable results table
+  - Detailed patient view with comprehensive analysis
+  - Export results as CSV or summary report
 - **Model Comparison**: Compare predictions from all ML models
 - **About Models**: Learn about Decision Tree, Random Forest, and XGBoost
 
@@ -131,6 +138,46 @@ Interactive component for real-time feature exploration and what-if analysis:
 
 **Props:**
 - `initialData`: Optional `PatientInput` object to pre-populate feature values
+
+#### BatchAnalysis
+Complete batch prediction page with file upload and analysis:
+
+**Features:**
+- **File Upload**: Drag-and-drop CSV file upload with validation using react-dropzone
+- **CSV Parsing**: Automatic parsing with papaparse and column validation
+- **Preview**: View first 5 rows before processing
+- **Batch Processing**: Process up to 100s of patients with progress tracking (10 patients per batch)
+- **Statistics Dashboard**:
+  - Total patients, risk distribution (Low/Medium/High)
+  - Average risk probability
+  - Pie chart for risk distribution (Chart.js)
+  - Histogram for probability distribution (Chart.js)
+  - Top 5 highest risk patients with quick view
+- **Results Table**:
+  - Sortable columns (Age, Glucose, BMI, Probability, Risk Level)
+  - Search functionality (by ID or risk level)
+  - Filter by risk level (All/Low/Medium/High)
+  - Color-coded risk badges
+  - Row hover effects and smooth interactions
+- **Detailed Patient View**:
+  - Full-screen modal with PredictionResults component
+  - On-demand fetching of detailed predictions with SHAP explanations
+  - Smooth loading states
+- **Export Functionality**:
+  - Export results as CSV with predictions and confidence scores
+  - Export summary report as text file with recommendations
+  - Download individual patient analysis
+
+**Required CSV Format:**
+```csv
+Pregnancies,Glucose,BloodPressure,SkinThickness,Insulin,BMI,DiabetesPedigreeFunction,Age
+6,148,72,35,0,33.6,0.627,50
+1,85,66,29,0,26.6,0.351,31
+```
+
+**Dependencies:**
+- `react-dropzone`: File upload component
+- `papaparse`: CSV parsing library
 
 #### PredictionForm
 Comprehensive input form with dual inputs (sliders + number fields):
