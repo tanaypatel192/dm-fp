@@ -202,6 +202,171 @@ npm start
 - Interactive web interface
 - Extensive visualizations and reporting
 
+## A/B Testing Framework
+
+The application includes a comprehensive A/B testing framework for comparing different model versions and optimizing performance.
+
+### Features
+
+- **Traffic Splitting**: Configure traffic percentages for each variant (50/50, 70/30, etc.)
+- **User Assignment**: Consistent hashing ensures users see the same variant across sessions
+- **Metric Tracking**: Automatically track predictions, conversions, ratings, and interactions
+- **Statistical Analysis**: Built-in hypothesis testing with t-tests and confidence intervals
+- **Real-time Analytics**: Live dashboards showing experiment progress and results
+
+### Backend API
+
+The A/B testing API provides endpoints for:
+
+**Experiment Management**
+- `POST /api/ab-testing/experiments` - Create new experiment
+- `GET /api/ab-testing/experiments` - List all experiments
+- `GET /api/ab-testing/experiments/{id}` - Get experiment details
+- `POST /api/ab-testing/experiments/{id}/start` - Start experiment
+- `POST /api/ab-testing/experiments/{id}/pause` - Pause experiment
+- `POST /api/ab-testing/experiments/{id}/stop` - Stop experiment
+
+**User Assignment**
+- `GET /api/ab-testing/experiments/{id}/assign` - Assign user to variant
+- `GET /api/ab-testing/experiments/{id}/variant` - Get user's assigned variant
+
+**Tracking**
+- `POST /api/ab-testing/track/prediction` - Track prediction event
+- `POST /api/ab-testing/track/conversion` - Track conversion event
+- `POST /api/ab-testing/track/rating` - Track user rating
+- `POST /api/ab-testing/track/interaction` - Track user interaction
+
+**Analytics**
+- `GET /api/ab-testing/experiments/{id}/results` - Get comprehensive results
+- `GET /api/ab-testing/experiments/{id}/metrics` - Get current metrics
+- `POST /api/ab-testing/experiments/{id}/analyze` - Run statistical analysis
+
+### Frontend Integration
+
+#### Using the A/B Test Hook
+
+```typescript
+import { useABTest } from '@/hooks/useABTest';
+
+function MyComponent() {
+  const abTest = useABTest('experiment-id', {
+    enabled: true,
+    autoAssign: true
+  });
+
+  // Track prediction
+  abTest.trackPrediction({
+    prediction_time_ms: 145,
+    confidence: 0.87,
+    prediction: 1,
+    risk_level: 'high',
+  });
+
+  // Track conversion
+  abTest.trackConversion(true);
+
+  // Track rating
+  abTest.trackRating(4.5);
+
+  return (
+    <div>
+      <p>Using model: {abTest.modelName}</p>
+      <p>Variant: {abTest.variantId}</p>
+    </div>
+  );
+}
+```
+
+#### Admin Dashboard
+
+View and manage experiments:
+```typescript
+import ABTestAdmin from '@/components/ABTestAdmin';
+
+function AdminPage() {
+  return <ABTestAdmin onViewExperiment={(id) => navigate(`/experiments/${id}`)} />;
+}
+```
+
+#### Analytics Dashboard
+
+View experiment results:
+```typescript
+import ABTestDashboard from '@/components/ABTestDashboard';
+
+function ResultsPage() {
+  return <ABTestDashboard experimentId="experiment-id" />;
+}
+```
+
+### Creating an Experiment
+
+```bash
+curl -X POST http://localhost:8000/api/ab-testing/experiments \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "RF vs XGBoost",
+    "description": "Compare Random Forest and XGBoost models",
+    "variants": [
+      {
+        "name": "Control (RF)",
+        "model_name": "random_forest",
+        "traffic_percentage": 50,
+        "variant_type": "control"
+      },
+      {
+        "name": "Treatment (XGB)",
+        "model_name": "xgboost",
+        "traffic_percentage": 50,
+        "variant_type": "treatment"
+      }
+    ],
+    "target_metric": "conversion_rate",
+    "min_sample_size": 100,
+    "confidence_level": 0.95
+  }'
+```
+
+### Metrics Tracked
+
+- **Sample Size**: Total users and predictions per variant
+- **Performance**: Avg prediction time, confidence scores
+- **Predictions**: Distribution of positive/negative and risk levels
+- **Engagement**: User interactions, conversion rate
+- **Satisfaction**: User ratings (1-5 stars)
+- **Errors**: Error count and rate
+
+### Statistical Analysis
+
+The framework uses two-sample t-tests to determine statistical significance:
+
+- **Null Hypothesis**: No difference between variants
+- **Confidence Level**: 95% (configurable)
+- **Min Sample Size**: 100 (configurable)
+- **Metrics**: Relative lift, p-value, confidence intervals
+- **Recommendations**: Automatic suggestions based on results
+
+### Example Results
+
+```json
+{
+  "winner": {
+    "winner": "variant-123",
+    "variant_name": "Treatment (XGB)",
+    "lift": 12.5,
+    "confidence": 0.95
+  },
+  "comparisons": [{
+    "significant": true,
+    "p_value": 0.023,
+    "relative_lift_percent": 12.5,
+    "control_mean": 0.72,
+    "treatment_mean": 0.81,
+    "recommendation": "Strong positive lift detected! Consider promoting treatment variant."
+  }]
+}
+```
+
 ## Future Enhancements
 
 - Deploy to cloud (AWS/GCP/Azure)
@@ -211,6 +376,8 @@ npm start
 - Include deep learning models
 - Expand dataset with additional features
 - Mobile application
+- Multi-armed bandit algorithms for A/B testing
+- Bayesian A/B testing methods
 
 ## Contributing
 
