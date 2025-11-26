@@ -7,6 +7,7 @@ Decision Tree, Random Forest, and XGBoost models.
 Endpoints:
 - POST /api/predict: Single prediction
 - POST /api/predict-batch: Batch predictions
+- POST /api/predict-explain: Comprehensive prediction with SHAP explanations
 - GET /api/models: List all models with metrics
 - GET /api/model/{model_name}/metrics: Get model metrics
 - GET /api/model/{model_name}/feature-importance: Get feature importance
@@ -22,7 +23,7 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, validator
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Tuple
 import numpy as np
 import pandas as pd
 import joblib
@@ -30,6 +31,12 @@ import logging
 import os
 from datetime import datetime
 import json
+try:
+    import shap
+    SHAP_AVAILABLE = True
+except ImportError:
+    SHAP_AVAILABLE = False
+    logger.warning("SHAP not available. Install with: pip install shap")
 
 # Configure logging
 logging.basicConfig(
@@ -61,6 +68,9 @@ models_cache = {}
 scaler = None
 feature_names = None
 model_metrics = {}
+shap_explainers = {}
+training_data = None
+training_labels = None
 
 
 # ============================================================================
@@ -206,6 +216,91 @@ class HealthResponse(BaseModel):
     available_models: List[str]
 
 
+class FeatureContribution(BaseModel):
+    """Schema for individual feature contribution."""
+    feature: str
+    value: float
+    contribution: float
+    impact: str  # "increases" or "decreases"
+
+
+class SHAPExplanation(BaseModel):
+    """Schema for SHAP explanation values."""
+    base_value: float
+    prediction_value: float
+    feature_contributions: List[FeatureContribution]
+    top_features: List[str]
+
+
+class ModelPredictionDetail(BaseModel):
+    """Detailed prediction from a single model."""
+    model_name: str
+    prediction: int
+    prediction_label: str
+    probability: float
+    confidence: float
+
+
+class SimilarPatient(BaseModel):
+    """Schema for similar patient from training data."""
+    similarity_score: float
+    outcome: int
+    outcome_label: str
+    key_similarities: List[str]
+
+
+class RiskFactor(BaseModel):
+    """Schema for identified risk factors."""
+    factor: str
+    current_value: float
+    risk_level: str
+    is_modifiable: bool
+
+
+class Recommendation(BaseModel):
+    """Schema for personalized recommendations."""
+    category: str
+    priority: str  # "High", "Medium", "Low"
+    recommendation: str
+    rationale: str
+
+
+class ComprehensivePredictionOutput(BaseModel):
+    """Comprehensive prediction output with explanations."""
+    # Patient data
+    input_data: Dict[str, Any]
+
+    # Predictions from all models
+    model_predictions: List[ModelPredictionDetail]
+
+    # Ensemble prediction
+    ensemble_prediction: int
+    ensemble_label: str
+    ensemble_probability: float
+    ensemble_confidence: float
+
+    # Risk assessment
+    risk_level: str
+    risk_score: float
+
+    # SHAP explanations
+    shap_available: bool
+    shap_explanation: Optional[SHAPExplanation]
+
+    # Risk factors
+    risk_factors: List[RiskFactor]
+
+    # Similar patients
+    similar_patients: List[SimilarPatient]
+
+    # Personalized recommendations
+    recommendations: List[Recommendation]
+
+    # Metadata
+    processing_time_ms: float
+    timestamp: str
+
+
 # ============================================================================
 # Startup Event - Load Models and Preprocessor
 # ============================================================================
@@ -213,7 +308,7 @@ class HealthResponse(BaseModel):
 @app.on_event("startup")
 async def load_models_and_preprocessor():
     """Load all trained models and preprocessor at startup."""
-    global models_cache, scaler, feature_names, model_metrics
+    global models_cache, scaler, feature_names, model_metrics, shap_explainers, training_data, training_labels
 
     logger.info("="*80)
     logger.info("LOADING MODELS AND PREPROCESSOR")
@@ -285,8 +380,41 @@ async def load_models_and_preprocessor():
                 except Exception as e:
                     logger.error(f"Error reading metrics for {model_name}: {str(e)}")
 
+        # Load training data for similar patient finding
+        X_train_path = os.path.join("data", "processed", "X_train.csv")
+        y_train_path = os.path.join("data", "processed", "y_train.csv")
+
+        if os.path.exists(X_train_path) and os.path.exists(y_train_path):
+            try:
+                training_data = pd.read_csv(X_train_path)
+                training_labels = pd.read_csv(y_train_path).values.ravel()
+                logger.info(f"✓ Training data loaded: {len(training_data)} samples")
+            except Exception as e:
+                logger.warning(f"✗ Error loading training data: {str(e)}")
+        else:
+            logger.warning("✗ Training data not found")
+
+        # Create SHAP explainers if available
+        if SHAP_AVAILABLE and training_data is not None:
+            try:
+                # Limit training data for SHAP (for performance)
+                sample_size = min(100, len(training_data))
+                shap_sample = training_data.iloc[:sample_size]
+
+                for model_name, model in models_cache.items():
+                    try:
+                        logger.info(f"Creating SHAP explainer for {model_name}...")
+                        explainer = shap.TreeExplainer(model)
+                        shap_explainers[model_name] = explainer
+                        logger.info(f"✓ SHAP explainer created for {model_name}")
+                    except Exception as e:
+                        logger.warning(f"✗ Could not create SHAP explainer for {model_name}: {str(e)}")
+            except Exception as e:
+                logger.warning(f"✗ Error creating SHAP explainers: {str(e)}")
+
         logger.info("="*80)
         logger.info(f"STARTUP COMPLETE - {len(models_cache)} models loaded")
+        logger.info(f"SHAP explainers: {len(shap_explainers)} created")
         logger.info("="*80)
 
     except Exception as e:
@@ -368,6 +496,315 @@ def get_model_or_404(model_name: str):
             detail=f"Model '{model_name}' not found. Available models: {list(models_cache.keys())}"
         )
     return models_cache[model_name]
+
+
+def calculate_shap_values(processed_data: np.ndarray, patient_dict: Dict) -> Optional[SHAPExplanation]:
+    """
+    Calculate SHAP values for a prediction.
+
+    Args:
+        processed_data: Preprocessed patient data
+        patient_dict: Original patient data dictionary
+
+    Returns:
+        SHAPExplanation or None if SHAP not available
+    """
+    if not SHAP_AVAILABLE or not shap_explainers:
+        return None
+
+    try:
+        # Use XGBoost explainer if available, otherwise first available
+        model_name = "xgboost" if "xgboost" in shap_explainers else list(shap_explainers.keys())[0]
+        explainer = shap_explainers[model_name]
+        model = models_cache[model_name]
+
+        # Calculate SHAP values
+        shap_values = explainer.shap_values(processed_data)
+
+        # Get base value and prediction value
+        base_value = float(explainer.expected_value)
+        shap_sum = float(np.sum(shap_values[0]))
+        prediction_value = base_value + shap_sum
+
+        # Create feature contributions
+        base_features = ['Pregnancies', 'Glucose', 'BloodPressure', 'SkinThickness',
+                        'Insulin', 'BMI', 'DiabetesPedigreeFunction', 'Age']
+
+        contributions = []
+        for i, feature in enumerate(base_features[:len(shap_values[0])]):
+            shap_val = float(shap_values[0][i])
+            contributions.append(FeatureContribution(
+                feature=feature,
+                value=float(patient_dict.get(feature, 0)),
+                contribution=shap_val,
+                impact="increases" if shap_val > 0 else "decreases"
+            ))
+
+        # Sort by absolute contribution and get top 5
+        contributions.sort(key=lambda x: abs(x.contribution), reverse=True)
+        top_features = [c.feature for c in contributions[:5]]
+
+        return SHAPExplanation(
+            base_value=base_value,
+            prediction_value=prediction_value,
+            feature_contributions=contributions,
+            top_features=top_features
+        )
+
+    except Exception as e:
+        logger.warning(f"Error calculating SHAP values: {str(e)}")
+        return None
+
+
+def find_similar_patients(processed_data: np.ndarray, n_similar: int = 3) -> List[SimilarPatient]:
+    """
+    Find similar patients from training data.
+
+    Args:
+        processed_data: Preprocessed patient data
+        n_similar: Number of similar patients to return
+
+    Returns:
+        List of similar patients
+    """
+    if training_data is None or training_labels is None:
+        return []
+
+    try:
+        # Calculate Euclidean distance to all training samples
+        distances = np.linalg.norm(training_data.values - processed_data, axis=1)
+
+        # Get indices of n most similar patients
+        similar_indices = np.argsort(distances)[:n_similar]
+
+        base_features = ['Pregnancies', 'Glucose', 'BloodPressure', 'SkinThickness',
+                        'Insulin', 'BMI', 'DiabetesPedigreeFunction', 'Age']
+
+        similar_patients = []
+        for idx in similar_indices:
+            outcome = int(training_labels[idx])
+
+            # Find key similarities (features within 10% of patient value)
+            similarities = []
+            for i, feature in enumerate(base_features[:min(8, len(processed_data[0]))]):
+                if abs(training_data.iloc[idx, i] - processed_data[0, i]) < 0.1:
+                    similarities.append(feature)
+
+            similar_patients.append(SimilarPatient(
+                similarity_score=float(1.0 / (1.0 + distances[idx])),  # Normalize to 0-1
+                outcome=outcome,
+                outcome_label="Diabetes" if outcome == 1 else "No Diabetes",
+                key_similarities=similarities[:3]  # Top 3 similar features
+            ))
+
+        return similar_patients
+
+    except Exception as e:
+        logger.warning(f"Error finding similar patients: {str(e)}")
+        return []
+
+
+def identify_risk_factors(patient_dict: Dict) -> List[RiskFactor]:
+    """
+    Identify risk factors based on patient data.
+
+    Args:
+        patient_dict: Patient data dictionary
+
+    Returns:
+        List of identified risk factors
+    """
+    risk_factors = []
+
+    # BMI risk
+    bmi = patient_dict.get('BMI', 0)
+    if bmi >= 30:
+        risk_factors.append(RiskFactor(
+            factor="BMI (Obesity)",
+            current_value=bmi,
+            risk_level="High",
+            is_modifiable=True
+        ))
+    elif bmi >= 25:
+        risk_factors.append(RiskFactor(
+            factor="BMI (Overweight)",
+            current_value=bmi,
+            risk_level="Medium",
+            is_modifiable=True
+        ))
+
+    # Glucose risk
+    glucose = patient_dict.get('Glucose', 0)
+    if glucose >= 126:
+        risk_factors.append(RiskFactor(
+            factor="Fasting Glucose (Diabetic Range)",
+            current_value=glucose,
+            risk_level="High",
+            is_modifiable=True
+        ))
+    elif glucose >= 100:
+        risk_factors.append(RiskFactor(
+            factor="Fasting Glucose (Prediabetic Range)",
+            current_value=glucose,
+            risk_level="Medium",
+            is_modifiable=True
+        ))
+
+    # Blood Pressure risk
+    bp = patient_dict.get('BloodPressure', 0)
+    if bp >= 90:
+        risk_factors.append(RiskFactor(
+            factor="Diastolic Blood Pressure (High)",
+            current_value=bp,
+            risk_level="High",
+            is_modifiable=True
+        ))
+    elif bp >= 80:
+        risk_factors.append(RiskFactor(
+            factor="Diastolic Blood Pressure (Elevated)",
+            current_value=bp,
+            risk_level="Medium",
+            is_modifiable=True
+        ))
+
+    # Age risk (non-modifiable)
+    age = patient_dict.get('Age', 0)
+    if age >= 45:
+        risk_factors.append(RiskFactor(
+            factor="Age (Increased Risk)",
+            current_value=float(age),
+            risk_level="Medium" if age < 65 else "High",
+            is_modifiable=False
+        ))
+
+    # Family history (Diabetes Pedigree Function)
+    dpf = patient_dict.get('DiabetesPedigreeFunction', 0)
+    if dpf >= 0.5:
+        risk_factors.append(RiskFactor(
+            factor="Family History (Strong Genetic Component)",
+            current_value=dpf,
+            risk_level="High" if dpf >= 1.0 else "Medium",
+            is_modifiable=False
+        ))
+
+    return risk_factors
+
+
+def generate_recommendations(patient_dict: Dict, risk_factors: List[RiskFactor],
+                            risk_level: str) -> List[Recommendation]:
+    """
+    Generate personalized recommendations based on risk factors.
+
+    Args:
+        patient_dict: Patient data dictionary
+        risk_factors: Identified risk factors
+        risk_level: Overall risk level
+
+    Returns:
+        List of personalized recommendations
+    """
+    recommendations = []
+
+    # BMI-related recommendations
+    bmi = patient_dict.get('BMI', 0)
+    if bmi >= 30:
+        recommendations.append(Recommendation(
+            category="Weight Management",
+            priority="High",
+            recommendation="Achieve and maintain a healthy weight through diet and exercise. "
+                          "Aim for a BMI between 18.5-24.9. Even 5-10% weight loss can significantly reduce diabetes risk.",
+            rationale=f"Your BMI of {bmi:.1f} indicates obesity, which is a major modifiable risk factor for type 2 diabetes."
+        ))
+    elif bmi >= 25:
+        recommendations.append(Recommendation(
+            category="Weight Management",
+            priority="Medium",
+            recommendation="Work towards achieving a healthy weight through balanced nutrition and regular physical activity.",
+            rationale=f"Your BMI of {bmi:.1f} indicates you are overweight, which increases diabetes risk."
+        ))
+
+    # Glucose-related recommendations
+    glucose = patient_dict.get('Glucose', 0)
+    if glucose >= 126:
+        recommendations.append(Recommendation(
+            category="Blood Glucose Management",
+            priority="High",
+            recommendation="Consult with a healthcare provider immediately for diabetes screening. "
+                          "Adopt a low glycemic index diet, increase fiber intake, and monitor blood sugar regularly.",
+            rationale=f"Your fasting glucose of {glucose:.0f} mg/dL is in the diabetic range (≥126 mg/dL)."
+        ))
+    elif glucose >= 100:
+        recommendations.append(Recommendation(
+            category="Blood Glucose Management",
+            priority="High",
+            recommendation="Schedule a diabetes screening test. Reduce simple carbohydrates, increase whole grains, "
+                          "and incorporate regular physical activity to improve insulin sensitivity.",
+            rationale=f"Your fasting glucose of {glucose:.0f} mg/dL indicates prediabetes (100-125 mg/dL)."
+        ))
+
+    # Blood pressure recommendations
+    bp = patient_dict.get('BloodPressure', 0)
+    if bp >= 80:
+        recommendations.append(Recommendation(
+            category="Blood Pressure Control",
+            priority="High" if bp >= 90 else "Medium",
+            recommendation="Reduce sodium intake, increase potassium-rich foods, exercise regularly, "
+                          "manage stress, and limit alcohol. Consider medical consultation.",
+            rationale=f"Your diastolic blood pressure of {bp:.0f} mm Hg is elevated. "
+                     "High blood pressure often coexists with diabetes."
+        ))
+
+    # Age-appropriate screening
+    age = patient_dict.get('Age', 0)
+    if age >= 45:
+        recommendations.append(Recommendation(
+            category="Regular Screening",
+            priority="High",
+            recommendation="Schedule regular diabetes screening tests (HbA1c, fasting glucose) at least annually. "
+                          "More frequent screening may be needed based on other risk factors.",
+            rationale=f"At age {age}, regular diabetes screening is recommended, especially with other risk factors present."
+        ))
+
+    # Physical activity recommendations
+    recommendations.append(Recommendation(
+        category="Physical Activity",
+        priority="High" if risk_level == "High" else "Medium",
+        recommendation="Engage in at least 150 minutes of moderate-intensity aerobic activity per week "
+                      "(e.g., brisk walking, swimming). Include resistance training 2-3 times weekly.",
+        rationale="Regular physical activity improves insulin sensitivity, helps control weight, and reduces diabetes risk by up to 50%."
+    ))
+
+    # Dietary recommendations
+    recommendations.append(Recommendation(
+        category="Nutrition",
+        priority="High" if risk_level == "High" else "Medium",
+        recommendation="Follow a balanced diet rich in vegetables, fruits, whole grains, lean proteins, and healthy fats. "
+                      "Limit processed foods, sugary beverages, and refined carbohydrates.",
+        rationale="A healthy diet is crucial for preventing and managing diabetes. Focus on nutrient-dense, low-glycemic foods."
+    ))
+
+    # Family history considerations
+    dpf = patient_dict.get('DiabetesPedigreeFunction', 0)
+    if dpf >= 0.5:
+        recommendations.append(Recommendation(
+            category="Genetic Risk Management",
+            priority="High",
+            recommendation="Given your family history, focus intensively on modifiable risk factors. "
+                          "Consider genetic counseling and more frequent screening.",
+            rationale=f"Your diabetes pedigree function of {dpf:.3f} indicates a strong family history, "
+                     "increasing your genetic predisposition to diabetes."
+        ))
+
+    # General health recommendations
+    recommendations.append(Recommendation(
+        category="Lifestyle",
+        priority="Medium",
+        recommendation="Maintain good sleep hygiene (7-9 hours/night), manage stress through relaxation techniques, "
+                      "avoid smoking, and limit alcohol consumption.",
+        rationale="Overall healthy lifestyle choices support metabolic health and reduce diabetes risk."
+    ))
+
+    return recommendations
 
 
 # ============================================================================
@@ -496,6 +933,122 @@ async def predict_batch(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error in batch prediction: {str(e)}"
+        )
+
+
+@app.post("/api/predict-explain", response_model=ComprehensivePredictionOutput, tags=["Predictions"])
+async def predict_explain(patient: PatientInput):
+    """
+    Comprehensive prediction with SHAP explanations and personalized recommendations.
+
+    This endpoint provides a complete analysis including:
+    - Predictions from all three models
+    - Ensemble prediction with confidence scores
+    - Risk level assessment
+    - SHAP-based feature explanations
+    - Similar patients from training data
+    - Identified risk factors
+    - Personalized health recommendations
+
+    - **patient**: Patient data with all required features
+
+    Returns comprehensive prediction output with explanations and recommendations.
+    """
+    try:
+        start_time = datetime.now()
+        logger.info("Comprehensive prediction request received")
+
+        # Preprocess input
+        processed_data = preprocess_input(patient)
+        patient_dict = patient.dict()
+
+        # Get predictions from all models
+        model_predictions = []
+        probabilities = []
+
+        for model_name, model in models_cache.items():
+            try:
+                prediction = int(model.predict(processed_data)[0])
+                probability = float(model.predict_proba(processed_data)[0][1])
+                probabilities.append(probability)
+                confidence = float(max(model.predict_proba(processed_data)[0]))
+
+                model_predictions.append(ModelPredictionDetail(
+                    model_name=model_name,
+                    prediction=prediction,
+                    prediction_label="Diabetes" if prediction == 1 else "No Diabetes",
+                    probability=round(probability, 4),
+                    confidence=round(confidence, 4)
+                ))
+
+                logger.info(f"{model_name}: prediction={prediction}, probability={probability:.4f}")
+            except Exception as e:
+                logger.warning(f"Error with model {model_name}: {str(e)}")
+
+        # Calculate ensemble prediction (average of probabilities)
+        if probabilities:
+            ensemble_probability = float(np.mean(probabilities))
+            ensemble_prediction = 1 if ensemble_probability >= 0.5 else 0
+            ensemble_confidence = float(np.std(probabilities))  # Lower std = higher confidence
+            ensemble_confidence = 1.0 - min(ensemble_confidence, 1.0)  # Invert and cap at 1.0
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No models available for prediction"
+            )
+
+        # Calculate risk level
+        risk_level = calculate_risk_level(ensemble_probability)
+        risk_score = ensemble_probability
+
+        # Calculate SHAP values
+        shap_explanation = calculate_shap_values(processed_data, patient_dict)
+        shap_available = shap_explanation is not None
+
+        # Find similar patients
+        similar_patients = find_similar_patients(processed_data, n_similar=3)
+
+        # Identify risk factors
+        risk_factors = identify_risk_factors(patient_dict)
+
+        # Generate personalized recommendations
+        recommendations = generate_recommendations(patient_dict, risk_factors, risk_level)
+
+        # Calculate processing time
+        processing_time = (datetime.now() - start_time).total_seconds() * 1000
+
+        # Build comprehensive response
+        response = ComprehensivePredictionOutput(
+            input_data=patient_dict,
+            model_predictions=model_predictions,
+            ensemble_prediction=ensemble_prediction,
+            ensemble_label="Diabetes" if ensemble_prediction == 1 else "No Diabetes",
+            ensemble_probability=round(ensemble_probability, 4),
+            ensemble_confidence=round(ensemble_confidence, 4),
+            risk_level=risk_level,
+            risk_score=round(risk_score, 4),
+            shap_available=shap_available,
+            shap_explanation=shap_explanation,
+            risk_factors=risk_factors,
+            similar_patients=similar_patients,
+            recommendations=recommendations,
+            processing_time_ms=round(processing_time, 2),
+            timestamp=datetime.now().isoformat()
+        )
+
+        logger.info(f"Comprehensive prediction complete: {response.ensemble_label} "
+                   f"(probability: {ensemble_probability:.4f}, risk: {risk_level}) "
+                   f"in {processing_time:.2f}ms")
+
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in comprehensive prediction: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error in comprehensive prediction: {str(e)}"
         )
 
 
