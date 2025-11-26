@@ -33,6 +33,13 @@ React + TypeScript frontend for the Diabetes Prediction ML System.
   - Pairplot matrix for multi-feature analysis
   - Summary statistics cards
   - Customizable color schemes and filters
+- **Model Explainability**: Educational page explaining how ML models make decisions
+  - Learn how Decision Trees, Random Forests, and XGBoost work
+  - Interactive decision tree visualization
+  - Feature importance comparison across all models
+  - SHAP values explanation with waterfall plots
+  - Example predictions with step-by-step explanations
+  - Try-it-yourself section with real-time model comparisons
 - **About Models**: Learn about Decision Tree, Random Forest, and XGBoost
 
 ## Prerequisites
@@ -100,6 +107,8 @@ frontend/
 │   │   ├── SinglePrediction.tsx
 │   │   ├── BatchAnalysis.tsx
 │   │   ├── ModelComparison.tsx
+│   │   ├── VisualizationDashboard.tsx
+│   │   ├── ModelExplainability.tsx
 │   │   └── About.tsx
 │   ├── services/            # API services
 │   │   └── api.ts
@@ -226,6 +235,55 @@ Comprehensive data visualization dashboard with interactive charts:
 - Plotly.js for advanced visualizations (heatmap, 3D, interactive plots)
 - Multiple color schemes for customization
 - Export functionality for all charts
+
+#### ModelExplainability
+Educational page explaining how ML models work and make predictions:
+
+**Features:**
+- **Education Section**:
+  - Comprehensive explanations for Decision Tree, Random Forest, and XGBoost
+  - How each model works (step-by-step breakdown)
+  - Pros and cons for each model
+  - When to use each model
+  - Interactive model selector with tabbed interface
+- **Decision Tree Visualization**:
+  - Simplified HTML/CSS-based tree structure
+  - Color-coded nodes (blue for decisions, green/red for outcomes)
+  - Visual representation of decision-making process
+  - Explanation of tree traversal
+- **Feature Importance Comparison**:
+  - Side-by-side comparison of all 3 models
+  - Interactive Plotly grouped bar chart
+  - Educational cards explaining:
+    - What feature importance means
+    - Why different models rank features differently
+  - Sorted by importance with clear visual hierarchy
+- **SHAP Values Section**:
+  - Introduction to SHAP (SHapley Additive exPlanations)
+  - How to interpret SHAP values (positive vs negative contributions)
+  - Example SHAP waterfall plot showing feature contributions
+  - Color-coded interpretation guide
+- **Example Predictions**:
+  - 3 sample patients (Low Risk, High Risk, Borderline)
+  - Loads real predictions from all models on page mount
+  - Side-by-side comparison showing how models agree/disagree
+  - Patient data displayed with expected outcomes
+- **Try It Yourself**:
+  - Interactive form with all 8 patient feature inputs
+  - Real-time predictions from all models
+  - Comprehensive prediction with SHAP explanations
+  - Visual comparison of model reasoning
+  - Feature contribution waterfall plot
+
+**Navigation:**
+- 6 section tabs with icons (Learn, Trees, Importance, SHAP, Examples, Try It)
+- Smooth scrolling and progressive disclosure
+- Mobile-responsive with proper spacing
+
+**Dependencies:**
+- Plotly.js for interactive charts
+- React Icons (react-icons/fi) for section icons
+- Integrates with `/api/predict-explain` and `/api/compare-models` endpoints
 
 #### PredictionForm
 Comprehensive input form with dual inputs (sliders + number fields):
