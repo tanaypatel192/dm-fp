@@ -26,6 +26,13 @@ React + TypeScript frontend for the Diabetes Prediction ML System.
   - Detailed patient view with comprehensive analysis
   - Export results as CSV or summary report
 - **Model Comparison**: Compare predictions from all ML models
+- **Visualization Dashboard**: Interactive data visualizations and statistical analysis
+  - Feature distribution histograms and box plots
+  - Correlation heatmap with interactive hover
+  - 3D scatter plots with rotate and zoom
+  - Pairplot matrix for multi-feature analysis
+  - Summary statistics cards
+  - Customizable color schemes and filters
 - **About Models**: Learn about Decision Tree, Random Forest, and XGBoost
 
 ## Prerequisites
@@ -178,6 +185,47 @@ Pregnancies,Glucose,BloodPressure,SkinThickness,Insulin,BMI,DiabetesPedigreeFunc
 **Dependencies:**
 - `react-dropzone`: File upload component
 - `papaparse`: CSV parsing library
+
+#### VisualizationDashboard
+Comprehensive data visualization dashboard with interactive charts:
+
+**Features:**
+- **Summary Statistics Cards**: 5 metric cards showing total patients, diabetic percentage, average age/BMI, and feature count
+- **Feature Distribution Analysis**:
+  - Dual histograms comparing diabetic vs non-diabetic distributions
+  - Side-by-side box plots showing quartiles and outliers
+  - Summary statistics table (mean, std dev, min, median, max)
+  - Feature selector dropdown
+- **Correlation Heatmap**:
+  - Interactive heatmap showing all feature correlations
+  - Hover to see exact correlation values
+  - Customizable color schemes (Viridis, Plasma, Cool, Warm, Earth)
+  - Plotly-based with zoom and pan
+- **3D Scatter Plot**:
+  - Interactive 3D visualization with rotate and zoom
+  - Separate colors for diabetic (red) and non-diabetic (green) patients
+  - Configurable X, Y, Z axes from any feature
+  - Plotly 3D scatter with camera controls
+- **Pairplot Matrix**:
+  - 3x3 grid of scatter plots and distributions
+  - Diagonal shows feature distributions
+  - Off-diagonal shows pairwise scatter plots
+  - Select any 3 features to visualize
+- **Global Controls**:
+  - Color scheme selector (5 schemes)
+  - Outcome filter (All/Diabetic/Non-Diabetic)
+  - Download buttons for all charts
+  - Refresh data button
+- **Interactive Features**:
+  - Hover tooltips on all charts
+  - Click legend items to toggle series
+  - Responsive layouts for all screen sizes
+  - Dark mode support with transparent backgrounds
+
+**Chart Types:**
+- Plotly.js for advanced visualizations (heatmap, 3D, interactive plots)
+- Multiple color schemes for customization
+- Export functionality for all charts
 
 #### PredictionForm
 Comprehensive input form with dual inputs (sliders + number fields):
