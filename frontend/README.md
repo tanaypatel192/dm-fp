@@ -566,6 +566,318 @@ const previewUrl = getPreviewURL(doc);
 - jspdf-autotable (^3.8.2) - Table formatting
 - html2canvas (^1.4.1) - Chart to image conversion
 
+### Error Handling & User Feedback
+
+Comprehensive error handling system with retry logic, validation, and user feedback:
+
+#### ErrorBoundary Component
+
+Catches React errors and displays user-friendly error UI:
+
+```typescript
+import ErrorBoundary from '@/components/ErrorBoundary';
+
+<ErrorBoundary
+  fallback={<div>Custom error UI</div>}
+  onError={(error, errorInfo) => console.error(error)}
+>
+  <YourComponent />
+</ErrorBoundary>
+```
+
+**Features:**
+- Automatic error catching in component tree
+- User-friendly error messages by error type (Network, Timeout, Permission, etc.)
+- "Try Again" and "Go Home" action buttons
+- Expandable technical details for debugging
+- Error logging to console (ready for external services)
+- Custom fallback UI support
+
+#### Toast Notifications
+
+Custom toast system built on react-toastify:
+
+```typescript
+import { toast, toastPresets } from '@/utils/toast';
+
+// Basic toasts
+toast.success('Operation completed!');
+toast.error('Something went wrong');
+toast.warning('Please check your input');
+toast.info('Processing your request...');
+
+// Toasts with titles
+toast.successWithTitle('Success!', 'Data saved successfully');
+toast.errorWithTitle('Error', 'Failed to connect to server');
+
+// Toasts with action buttons
+toast.withActions(
+  'File deleted',
+  [{ label: 'Undo', onClick: () => undoDelete() }],
+  'success'
+);
+
+// Promise toast (loading → success/error)
+toast.promise(
+  apiCall(),
+  {
+    pending: 'Processing...',
+    success: 'Completed!',
+    error: 'Failed',
+  }
+);
+
+// Presets for common scenarios
+toastPresets.apiSuccess('Prediction');
+toastPresets.networkError();
+toastPresets.validationError('Please check your input');
+toastPresets.predictionSuccess();
+toastPresets.batchComplete(50);
+```
+
+**Configuration:**
+- Auto-dismiss after 5 seconds (7s for errors)
+- Top-right position
+- Progress bar
+- Click to dismiss
+- Pause on hover
+- Drag to dismiss
+
+#### Loading States
+
+Multiple loading components for different scenarios:
+
+**LoadingOverlay:**
+```typescript
+import { LoadingOverlay } from '@/components/common/LoadingOverlay';
+
+<LoadingOverlay
+  isLoading={isLoading}
+  message="Loading data..."
+  progress={uploadProgress}
+  fullScreen={false}
+/>
+```
+
+**ButtonLoading:**
+```typescript
+import { ButtonLoading } from '@/components/common/LoadingOverlay';
+
+<ButtonLoading
+  isLoading={isSubmitting}
+  loadingText="Saving..."
+  onClick={handleSubmit}
+  className="btn-primary"
+>
+  Save Changes
+</ButtonLoading>
+```
+
+**ProgressBar:**
+```typescript
+import { ProgressBar } from '@/components/common/LoadingOverlay';
+
+<ProgressBar
+  progress={uploadProgress}
+  label="Uploading files"
+  showPercentage={true}
+  color="primary"
+  size="md"
+/>
+```
+
+**CircularProgress:**
+```typescript
+import { CircularProgress } from '@/components/common/LoadingOverlay';
+
+<CircularProgress
+  progress={completionPercentage}
+  size={120}
+  strokeWidth={8}
+  color="success"
+  showLabel={true}
+/>
+```
+
+**InlineLoading:**
+```typescript
+import { InlineLoading } from '@/components/common/LoadingOverlay';
+
+<InlineLoading size="md" message="Loading..." />
+```
+
+#### Skeleton Loaders
+
+Placeholder loaders for content:
+
+```typescript
+import {
+  Skeleton,
+  SkeletonCard,
+  SkeletonTable,
+  SkeletonList,
+  SkeletonForm,
+  SkeletonChart,
+  SkeletonPatientCard,
+  SkeletonPredictionResults,
+} from '@/components/common/Skeleton';
+
+// Basic skeleton
+<Skeleton variant="text" width="60%" />
+<Skeleton variant="circular" width="48px" height="48px" />
+<Skeleton variant="rectangular" height="200px" />
+
+// Preset skeletons
+<SkeletonTable rows={5} columns={4} />
+<SkeletonList items={3} showAvatar={true} />
+<SkeletonForm fields={4} />
+<SkeletonPatientCard />
+<SkeletonPredictionResults />
+```
+
+**Animations:**
+- `pulse` - Fade in/out animation (default)
+- `wave` - Shimmer wave animation
+- `none` - No animation
+
+#### Empty States
+
+Displays when no data is available:
+
+```typescript
+import {
+  EmptyState,
+  EmptyStateNoData,
+  EmptyStateNoPredictions,
+  EmptyStateSearchResults,
+  EmptyStateError,
+} from '@/components/common/EmptyState';
+
+// Custom empty state
+<EmptyState
+  icon={<FiInbox />}
+  title="No Data Available"
+  description="There is no data to display."
+  action={{
+    label: 'Refresh',
+    onClick: handleRefresh,
+  }}
+/>
+
+// Preset empty states
+<EmptyStateNoPredictions onStartPrediction={handleStart} />
+<EmptyStateSearchResults searchTerm="diabetes" onClearSearch={clearSearch} />
+<EmptyStateError onRetry={retry} />
+```
+
+**Presets:**
+- NoData, NoPredictions, NoPatients
+- SearchResults, Filtered
+- Error, NoRecords
+- BatchUpload, CreateFirst
+
+#### Validation Feedback
+
+Form validation with visual feedback:
+
+```typescript
+import {
+  ValidatedInput,
+  ValidatedTextarea,
+  ValidatedSelect,
+  FormValidationSummary,
+} from '@/components/common/ValidationFeedback';
+
+// Validated input
+<ValidatedInput
+  label="Email"
+  type="email"
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
+  error={errors.email}
+  touched={touched.email}
+  success={!errors.email && touched.email}
+  required={true}
+  hint="We'll never share your email"
+/>
+
+// Form-level error summary
+<FormValidationSummary
+  errors={errors}
+  title="Please fix the following errors:"
+/>
+```
+
+**Features:**
+- Real-time validation feedback
+- Color-coded borders (green=success, red=error)
+- Checkmark/X icons for valid/invalid states
+- Error messages below inputs
+- Form-level validation summary
+- Required field indicators
+
+#### API Error Handling
+
+Enhanced error handling with retry logic:
+
+```typescript
+import {
+  withRetry,
+  getErrorMessage,
+  handleApiError,
+  networkMonitor,
+} from '@/utils/apiErrorHandler';
+
+// Retry failed requests automatically
+const data = await withRetry(
+  () => apiCall(),
+  { maxRetries: 3, baseDelay: 1000 }
+);
+
+// Get user-friendly error message
+try {
+  await apiCall();
+} catch (error) {
+  const message = getErrorMessage(error);
+  toast.error(message);
+}
+
+// Handle API error with full context
+try {
+  await apiCall();
+} catch (error) {
+  const { message, severity, validationErrors, shouldRetry } = handleApiError(error, 'Prediction');
+
+  if (validationErrors) {
+    setFieldErrors(validationErrors);
+  } else {
+    toast.error(message);
+  }
+}
+
+// Monitor network status
+networkMonitor.subscribe((online) => {
+  if (online) {
+    toast.success('Back online!');
+  } else {
+    toast.error('Connection lost');
+  }
+});
+```
+
+**Features:**
+- Exponential backoff retry (1s, 2s, 4s, 8s)
+- Network error detection
+- Timeout handling
+- User-friendly error messages by status code
+- Validation error extraction
+- Network status monitoring
+- Error severity classification
+- Automatic retry for 5xx errors
+
+**Dependencies:**
+- react-toastify (^9.1.3) - Toast notifications
+
 ## API Service
 
 The API service provides functions for all backend endpoints:
