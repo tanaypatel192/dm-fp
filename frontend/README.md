@@ -427,6 +427,145 @@ Sizes: `sm`, `md`, `lg`
 />
 ```
 
+## Utilities
+
+### PDF Report Generator
+
+Comprehensive PDF report generation utility using jsPDF and jsPDF-autotable:
+
+```typescript
+import {
+  generateSinglePatientReport,
+  generateBatchReport,
+  generateModelComparisonReport,
+  downloadPDF,
+  openPDFInNewTab,
+  sendPDFEmail,
+} from '@/utils/reportGenerator';
+```
+
+**Features:**
+- **Professional Medical Report Styling**:
+  - Custom header with logo and date
+  - Footer with page numbers and disclaimer
+  - Color-coded risk levels (green/yellow/red)
+  - Professional fonts and spacing
+  - Multi-page support with automatic pagination
+- **Single Patient Reports**:
+  - Patient information table with all health metrics
+  - Risk assessment summary with visual indicators
+  - Model predictions comparison table
+  - Risk factors analysis with modifiability status
+  - Personalized recommendations with priority levels
+  - Optional embedded charts (SHAP, risk visualization)
+  - Comprehensive disclaimer and contact information
+- **Batch Reports**:
+  - Executive summary with statistics
+  - Risk distribution visualization
+  - Detailed results table for all patients
+  - Color-coded risk levels in table
+  - Batch-level recommendations
+  - Multi-page pagination for large datasets
+- **Model Comparison Reports**:
+  - Performance metrics table (accuracy, precision, recall, F1, ROC AUC)
+  - Model status and last updated timestamps
+  - Agreement analysis across test cases
+  - Model selection recommendations
+  - Key considerations for each model type
+
+**Functions:**
+
+1. **Generate Single Patient Report**:
+```typescript
+const doc = await generateSinglePatientReport(
+  patientData,
+  comprehensivePrediction,
+  {
+    includeCharts: true,
+    chartElements: {
+      shapChart: document.getElementById('shap-chart'),
+      riskChart: document.getElementById('risk-chart'),
+    },
+  }
+);
+```
+
+2. **Generate Batch Report**:
+```typescript
+const doc = await generateBatchReport(
+  batchResults, // Array of patient results
+  {
+    totalPatients: 100,
+    lowRisk: 60,
+    mediumRisk: 30,
+    highRisk: 10,
+    avgProbability: 0.35,
+  }
+);
+```
+
+3. **Generate Model Comparison Report**:
+```typescript
+const doc = await generateModelComparisonReport(
+  modelMetrics, // Array of ModelMetrics
+  {
+    testCases: [
+      {
+        case: 'High glucose patient',
+        predictions: {
+          'Decision Tree': 'Diabetic',
+          'Random Forest': 'Diabetic',
+          'XGBoost': 'Diabetic',
+        },
+        agreement: true,
+      },
+    ],
+  }
+);
+```
+
+**Export Options:**
+```typescript
+// Download directly
+downloadPDF(doc, 'diabetes-report.pdf');
+
+// Open in new tab for printing
+openPDFInNewTab(doc);
+
+// Get as blob for upload
+const blob = getPDFBlob(doc);
+
+// Send via email (requires backend endpoint)
+await sendPDFEmail(
+  doc,
+  {
+    to: 'doctor@example.com',
+    subject: 'Diabetes Risk Assessment Report',
+    body: 'Please find attached the risk assessment report.',
+  },
+  '/api/send-email'
+);
+
+// Preview (get data URL)
+const previewUrl = getPreviewURL(doc);
+```
+
+**Chart Integration:**
+- Uses html2canvas to convert HTML chart elements to images
+- Embeds charts directly in PDF at high resolution (2x scale)
+- Supports any HTML element (Plotly, Chart.js, custom visualizations)
+
+**Styling Configuration:**
+- Custom color palette matching application theme
+- Responsive layouts that adapt to content
+- Professional medical report formatting
+- Automatic page breaks when content exceeds page height
+
+**Dependencies:**
+- jsPDF (^2.5.1) - PDF generation
+- jspdf-autotable (^3.8.2) - Table formatting
+- html2canvas (^1.4.1) - Chart to image conversion
+
 ## API Service
 
 The API service provides functions for all backend endpoints:
