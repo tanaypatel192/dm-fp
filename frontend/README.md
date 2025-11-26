@@ -98,10 +98,14 @@ frontend/
 │   │   │   ├── Card.tsx
 │   │   │   ├── ErrorMessage.tsx
 │   │   │   └── LoadingSpinner.tsx
-│   │   └── layout/          # Layout components
-│   │       ├── Header.tsx
-│   │       ├── Sidebar.tsx
-│   │       └── MainLayout.tsx
+│   │   ├── layout/          # Layout components
+│   │   │   ├── Header.tsx
+│   │   │   ├── Sidebar.tsx
+│   │   │   └── MainLayout.tsx
+│   │   ├── PredictionForm.tsx
+│   │   ├── PredictionResults.tsx
+│   │   ├── FeatureExplorer.tsx
+│   │   └── PerformanceMonitor.tsx
 │   ├── pages/               # Page components
 │   │   ├── Dashboard.tsx
 │   │   ├── SinglePrediction.tsx
@@ -320,6 +324,75 @@ Multi-section results dashboard with visualizations:
 - Personalized recommendations with priority levels
 - Similar patients comparison
 - Export functionality (PDF, email, local storage)
+
+#### PerformanceMonitor
+Real-time system monitoring and API performance tracking component:
+
+```tsx
+<PerformanceMonitor />
+```
+
+**Features:**
+- **Real-time Metrics Display**:
+  - Average API response time with live updates
+  - Success rate percentage across all requests
+  - Predictions per minute counter
+  - Total request counter
+  - Line chart showing response time trends (last 20 requests)
+  - Doughnut chart for success/error rate distribution
+- **Model Health Indicators**:
+  - Status badges for each model (Healthy/Degraded/Down)
+  - Average confidence scores per model
+  - Error rate tracking with threshold alerts
+  - Last prediction timestamp for each model
+  - Color-coded status indicators
+- **System Metrics**:
+  - Memory usage with progress bar (percentage-based)
+  - CPU usage monitoring with color-coded warnings
+  - Active connections counter with load indicators
+  - Cache hit rate display
+  - Visual progress bars with threshold colors (green/yellow/red)
+- **Historical Performance**:
+  - Daily prediction volume bar chart (last 7 days)
+  - Error rate trend line chart (7-day history)
+  - Data persisted in localStorage
+  - Weekly accuracy trends visualization
+- **Alerts and Notifications**:
+  - Toast notifications system (top-right corner)
+  - Auto-dismiss after 5 seconds
+  - Success notifications for completed predictions
+  - Warning alerts for slow responses (>2s threshold)
+  - Error notifications for failed API calls
+  - Model degradation alerts
+  - Slide-in animation for smooth UX
+- **Recent API Calls Table**:
+  - Last 10 API requests with details
+  - Timestamp, endpoint, response time, status
+  - Color-coded response times (green/yellow/red)
+  - Success/Failed status badges
+
+**Configuration:**
+- Auto-refresh toggle (5-second polling interval)
+- Response time threshold: 2000ms
+- Error rate threshold: 10%
+- Maximum toast notifications: 5
+- Keeps last 50 API metrics in memory
+
+**Usage:**
+```tsx
+// Standalone page or embedded in dashboard
+import PerformanceMonitor from '@/components/PerformanceMonitor';
+
+function MonitoringPage() {
+  return <PerformanceMonitor />;
+}
+```
+
+**Data Sources:**
+- `/health` endpoint for system health
+- `/api/models` endpoint for model metrics
+- Client-side tracking of API response times
+- localStorage for historical data persistence
 
 ### Common Components
 
