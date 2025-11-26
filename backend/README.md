@@ -431,45 +431,392 @@ uvicorn app:app --port 8001
 
 ## Production Deployment
 
-### Using Docker
+### Prerequisites
 
-Create `Dockerfile`:
-```dockerfile
-FROM python:3.9-slim
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY backend/ .
-
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-Build and run:
+Install production dependencies:
 ```bash
-docker build -t diabetes-api .
-docker run -p 8000:8000 diabetes-api
+pip install -r requirements.txt
 ```
 
-### Using Gunicorn
+### Configuration
 
+1. **Copy environment template:**
 ```bash
-pip install gunicorn
-gunicorn app:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+cp .env.example .env
 ```
 
-## Security Considerations
+2. **Configure environment variables:**
+Edit `.env` with your production values (database, Redis, API keys, etc.)
 
-For production deployment:
+### Production Features
 
-1. **Enable HTTPS**: Use reverse proxy (nginx, Apache)
-2. **Rate Limiting**: Implement rate limiting middleware
-3. **Authentication**: Add API key or JWT authentication
-4. **Input Sanitization**: Already handled by Pydantic
-5. **CORS**: Restrict to specific origins
-6. **Monitoring**: Add logging and monitoring (e.g., Prometheus, Grafana)
+#### 1. Redis Caching
+
+**Setup Redis:**
+```bash
+# Install Redis
+sudo apt-get install redis-server
+
+# Start Redis
+redis-server
+
+# Test connection
+redis-cli ping
+```
+
+**Cache Configuration** (`src/cache.py`):
+- Prediction caching with 1-hour TTL
+- Model metrics caching with 2-hour TTL
+- Feature importance caching
+- Automatic cache invalidation
+- Exponential backoff retry logic
+
+**Usage:**
+```python
+from src.cache import cache, cached, CacheTTL
+
+# Cached decorator
+@cached(ttl=CacheTTL.PREDICTION)
+async def get_prediction(data):
+    return prediction
+
+# Direct cache access
+await cache.set("key", value, ttl=3600)
+result = await cache.get("key")
+```
+
+#### 2. Database Integration
+
+**Setup Database** (`src/database.py`):
+
+**SQLite (development):**
+```bash
+# Automatic - no setup required
+# Database file: diabetes_predictions.db
+```
+
+**PostgreSQL (production):**
+```bash
+# Install PostgreSQL
+sudo apt-get install postgresql postgresql-contrib
+
+# Create database
+sudo -u postgres createdb diabetes_db
+
+# Update DATABASE_URL in .env:
+DATABASE_URL=postgresql+asyncpg://user:password@localhost/diabetes_db
+```
+
+**Database Models:**
+- `Prediction` - All predictions for auditing
+- `BatchJob` - Batch processing jobs
+- `BatchPrediction` - Individual batch predictions
+- `ModelMetric` - Model performance history
+- `APILog` - API request logs
+
+**Features:**
+- Automatic table creation
+- Async SQLAlchemy ORM
+- Indexed queries for performance
+- Relationship mapping
+
+#### 3. Rate Limiting
+
+**Configuration** (`src/rate_limit.py`):
+- Global limits: 200/hour, 50/minute
+- Prediction endpoints: 100/minute
+- Batch endpoints: 10/hour
+- Customizable per endpoint
+
+**Rate Limits:**
+```python
+from src.rate_limit import rate_limit, RateLimits
+
+@app.post("/api/predict")
+@rate_limit(RateLimits.PREDICTION)
+async def predict():
+    ...
+```
+
+**Client Identification:**
+- API key (if provided)
+- IP address (fallback)
+
+**Headers Returned:**
+- `X-RateLimit-Limit`
+- `X-RateLimit-Remaining`
+- `Retry-After` (when exceeded)
+
+#### 4. Structured Logging
+
+**Setup** (`src/logging_config.py`):
+```python
+from src.logging_config import setup_logging
+
+setup_logging(
+    log_level="INFO",
+    log_to_file=True,
+    log_dir="logs",
+    json_format=False  # True for production
+)
+```
+
+**Log Files:**
+- `logs/app.log` - General application logs
+- `logs/error.log` - Error logs only
+- `logs/api_requests.log` - API request logs (JSON)
+- `logs/performance.log` - Performance metrics (JSON)
+
+**Features:**
+- Structured logging with loguru
+- Automatic log rotation (500MB)
+- Log retention (30/60 days)
+- Compression (zip)
+- JSON format support
+- Performance timing
+- Request ID tracing
+
+#### 5. Security
+
+**Features** (`src/security.py`):
+- Input validation and sanitization
+- SQL injection prevention
+- XSS prevention
+- Security headers (CSP, HSTS, etc.)
+- API key authentication (optional)
+- Content-Type validation
+- Rate limiting per IP
+- Request logging
+
+**Security Headers:**
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `X-XSS-Protection: 1; mode=block`
+- `Strict-Transport-Security`
+- `Referrer-Policy`
+
+**Input Validation:**
+```python
+from src.security import InputValidator
+
+# Validate patient data
+validated = InputValidator.validate_patient_data(data)
+
+# Validate model name
+model = InputValidator.validate_model_name("xgboost")
+```
+
+#### 6. Async Optimization
+
+**Features:**
+- All database operations are async
+- Async Redis cache operations
+- Background tasks for batch processing
+- Concurrent request handling
+- Connection pooling
+
+#### 7. Deployment with Gunicorn
+
+**Using gunicorn.conf.py:**
+```bash
+gunicorn -c gunicorn.conf.py app:app
+```
+
+**Configuration:**
+- Multiple workers (CPU count * 2 + 1)
+- Uvicorn worker class
+- Worker recycling after 1000 requests
+- Graceful worker restarts
+- Health check hooks
+
+**Manual deployment:**
+```bash
+gunicorn app:app \
+  -w 4 \
+  -k uvicorn.workers.UvicornWorker \
+  --bind 0.0.0.0:8000 \
+  --timeout 120 \
+  --access-logfile logs/access.log \
+  --error-logfile logs/error.log
+```
+
+#### 8. Nginx Reverse Proxy
+
+**Setup:**
+```bash
+# Copy nginx config
+sudo cp nginx.conf /etc/nginx/sites-available/diabetes-api
+
+# Create symlink
+sudo ln -s /etc/nginx/sites-available/diabetes-api /etc/nginx/sites-enabled/
+
+# Test configuration
+sudo nginx -t
+
+# Reload nginx
+sudo systemctl reload nginx
+```
+
+**Features:**
+- SSL/TLS termination
+- Rate limiting by endpoint
+- Connection limiting
+- Request buffering
+- Compression (gzip)
+- Static file serving
+- Load balancing support
+- Security headers
+- Health check endpoint
+
+#### 9. Systemd Service
+
+Create `/etc/systemd/system/diabetes-api.service`:
+```ini
+[Unit]
+Description=Diabetes Prediction API
+After=network.target redis.service postgresql.service
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/diabetes-api
+Environment="PATH=/var/www/diabetes-api/venv/bin"
+ExecStart=/var/www/diabetes-api/venv/bin/gunicorn -c gunicorn.conf.py app:app
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**Manage service:**
+```bash
+sudo systemctl enable diabetes-api
+sudo systemctl start diabetes-api
+sudo systemctl status diabetes-api
+sudo systemctl restart diabetes-api
+```
+
+### Performance Monitoring
+
+**Metrics tracked:**
+- Request/response times
+- Cache hit/miss rates
+- Database query performance
+- Model prediction times
+- Error rates
+- Active connections
+
+**Logging queries:**
+```bash
+# View API requests
+tail -f logs/api_requests.log
+
+# View errors only
+tail -f logs/error.log
+
+# View performance metrics
+tail -f logs/performance.log
+
+# Nginx access logs
+tail -f /var/log/nginx/diabetes-api-access.log
+```
+
+### Environment Variables Reference
+
+See `.env.example` for all available configuration options:
+
+**Critical Settings:**
+- `ENVIRONMENT=production`
+- `DEBUG=False`
+- `DATABASE_URL` - Production database
+- `REDIS_URL` - Redis connection
+- `SECRET_KEY` - Change from default
+- `CORS_ORIGINS` - Restrict to your frontend
+- `API_KEYS` - Enable API authentication
+
+### Health Checks
+
+**Application health:**
+```bash
+curl http://localhost:8000/health
+```
+
+**Redis health:**
+```bash
+redis-cli ping
+```
+
+**Database health:**
+```bash
+# SQLite
+ls -lh diabetes_predictions.db
+
+# PostgreSQL
+psql -U user -d diabetes_db -c "SELECT 1"
+```
+
+**Nginx health:**
+```bash
+curl http://localhost:8080/health
+```
+
+### Backup and Recovery
+
+**Database backup:**
+```bash
+# SQLite
+cp diabetes_predictions.db diabetes_predictions.db.backup
+
+# PostgreSQL
+pg_dump diabetes_db > backup.sql
+```
+
+**Redis backup:**
+```bash
+redis-cli SAVE
+cp /var/lib/redis/dump.rdb dump.rdb.backup
+```
+
+### Security Checklist
+
+- [ ] Change `SECRET_KEY` in `.env`
+- [ ] Configure `API_KEYS` if using authentication
+- [ ] Restrict `CORS_ORIGINS` to frontend domain
+- [ ] Enable HTTPS with valid SSL certificate
+- [ ] Set `HTTPS_ONLY=True` in production
+- [ ] Configure firewall (UFW, iptables)
+- [ ] Set up log rotation
+- [ ] Enable database backups
+- [ ] Configure Redis password
+- [ ] Review and adjust rate limits
+- [ ] Set up monitoring (Sentry, etc.)
+
+### Troubleshooting
+
+**Check logs:**
+```bash
+# Application logs
+tail -100 logs/app.log
+
+# Gunicorn errors
+tail -100 logs/error.log
+
+# Nginx errors
+tail -100 /var/log/nginx/diabetes-api-error.log
+
+# System logs
+journalctl -u diabetes-api -n 100
+```
+
+**Common issues:**
+- **502 Bad Gateway**: Check if Gunicorn is running
+- **429 Too Many Requests**: Rate limit exceeded
+- **Connection refused**: Redis/PostgreSQL not running
+- **Slow responses**: Check database/Redis connection
 
 ## License
 
