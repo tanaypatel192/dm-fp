@@ -1,0 +1,13 @@
+FEATURE IMPORTANCE RANKING - RANDOM FOREST
+================================================================================
+
+Rank   Feature                        Importance      Std Dev        
+--------------------------------------------------------------------------------
+1      Glucose                        0.302680        0.088260       
+2      BMI                            0.170363        0.055801       
+3      DiabetesPedigreeFunction       0.116820        0.039713       
+4      Age                            0.116777        0.047351       
+5      Insulin                        0.086188        0.046069       
+6      BloodPressure                  0.075257        0.027820       
+7      Pregnancies                    0.074131        0.038060       
+8      SkinThickness                  0.057783        0.031252       
