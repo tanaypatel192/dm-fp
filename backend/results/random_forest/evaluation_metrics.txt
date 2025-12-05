@@ -3,31 +3,32 @@ RANDOM FOREST MODEL - EVALUATION METRICS
 
 MODEL CONFIGURATION:
 ----------------------------------------
-max_depth: None
-min_samples_leaf: 2
-min_samples_split: 5
-n_estimators: 100
+max_depth: 15
+max_features: log2
+min_samples_leaf: 1
+min_samples_split: 2
+n_estimators: 400
 
 PERFORMANCE METRICS:
 ----------------------------------------
-Accuracy:  0.7532
-Precision: 0.6667
-Recall:    0.5926
-F1-Score:  0.6275
-ROC-AUC:   0.8085
+Accuracy:  0.7403
+Precision: 0.6522
+Recall:    0.5556
+F1-Score:  0.6000
+ROC-AUC:   0.8165
 
-Out-of-Bag Score: 0.7736
+Out-of-Bag Score: 0.7638
 
 CONFUSION MATRIX:
 ----------------------------------------
 [[84 16]
- [22 32]]
+ [24 30]]
 
 DETAILED CLASSIFICATION REPORT:
 ----------------------------------------
-              precision    recall  f1-score     support
-No Diabetes    0.792453  0.840000  0.815534  100.000000
-Diabetes       0.666667  0.592593  0.627451   54.000000
-accuracy       0.753247  0.753247  0.753247    0.753247
-macro avg      0.729560  0.716296  0.721492  154.000000
-weighted avg   0.748346  0.753247  0.749583  154.000000
+              precision    recall  f1-score    support
+No Diabetes    0.777778  0.840000  0.807692  100.00000
+Diabetes       0.652174  0.555556  0.600000   54.00000
+accuracy       0.740260  0.740260  0.740260    0.74026
+macro avg      0.714976  0.697778  0.703846  154.00000
+weighted avg   0.733735  0.740260  0.734865  154.00000

@@ -258,11 +258,10 @@ const ModelComparison: React.FC = () => {
             <button
               key={modelName}
               onClick={() => toggleModel(modelName)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                selectedModels.includes(modelName)
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-              }`}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${selectedModels.includes(modelName)
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                }`}
             >
               {selectedModels.includes(modelName) && (
                 <FiCheckCircle className="inline w-4 h-4 mr-2" />
@@ -278,55 +277,50 @@ const ModelComparison: React.FC = () => {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setActiveView('table')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-              activeView === 'table'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeView === 'table'
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
           >
             <FiGrid className="w-4 h-4" />
             Metrics Table
           </button>
           <button
             onClick={() => setActiveView('roc')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-              activeView === 'roc'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeView === 'roc'
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
           >
             <FiTrendingUp className="w-4 h-4" />
             ROC Curves
           </button>
           <button
             onClick={() => setActiveView('confusion')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-              activeView === 'confusion'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeView === 'confusion'
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
           >
             <FiTarget className="w-4 h-4" />
             Confusion Matrices
           </button>
           <button
             onClick={() => setActiveView('features')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-              activeView === 'features'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeView === 'features'
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
           >
             <FiBarChart2 className="w-4 h-4" />
             Feature Importance
           </button>
           <button
             onClick={() => setActiveView('radar')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-              activeView === 'radar'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeView === 'radar'
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
           >
             <FiActivity className="w-4 h-4" />
             Performance Radar
@@ -603,8 +597,8 @@ const ModelComparison: React.FC = () => {
           title="Performance Radar Chart"
           subtitle="Multi-dimensional comparison of all metrics"
         >
-          <div className="h-96 flex items-center justify-center">
-            <div className="w-full max-w-2xl">
+          <div className="h-[800px] flex items-center justify-center">
+            <div className="w-full h-full">
               <Radar data={getRadarChartData()} options={{
                 responsive: true,
                 maintainAspectRatio: false,

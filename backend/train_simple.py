@@ -105,10 +105,12 @@ print("STEP 3/6: Training Decision Tree")
 print("-"*80)
 
 dt_model = DecisionTreeClassifier(
-    max_depth=5,
-    min_samples_split=10,
-    min_samples_leaf=5,
-    random_state=42
+    max_depth=30,
+    min_samples_split=2,
+    min_samples_leaf=1,
+    criterion='entropy',
+    random_state=42,
+    class_weight='balanced' # Handle class imbalance
 )
 dt_model.fit(X_train_scaled, y_train)
 y_pred_dt = dt_model.predict(X_test_scaled)
@@ -142,11 +144,12 @@ print("STEP 4/6: Training Random Forest")
 print("-"*80)
 
 rf_model = RandomForestClassifier(
-    n_estimators=100,
-    max_depth=10,
-    min_samples_split=5,
-    min_samples_leaf=2,
+    n_estimators=3000,
+    max_depth=30,
+    min_samples_split=2,
+    min_samples_leaf=1,
     random_state=42,
+    class_weight='balanced', # Handle class imbalance
     n_jobs=-1
 )
 rf_model.fit(X_train_scaled, y_train)
@@ -180,12 +183,53 @@ print("\n" + "-"*80)
 print("STEP 5/6: Training XGBoost" + (" (GPU ACCELERATED!)" if USE_GPU else " (CPU)"))
 print("-"*80)
 
+# Calculate scale_pos_weight for XGBoost
+n_negative = len(y_train) - sum(y_train)
+n_positive = sum(y_train)
+scale_pos_weight = n_negative / n_positive
+print(f"Calculated scale_pos_weight: {scale_pos_weight:.2f}")
+
+try:
+    # Aggressive parameter grids
+    simple_param_grid_xgb = {
+        'n_estimators': [1000, 2000, 3000],
+        'max_depth': [10, 20, 30],
+        'learning_rate': [0.01, 0.05, 0.1],
+        'subsample': [0.8, 1.0],
+        'colsample_bytree': [0.8, 1.0],
+        'min_child_weight': [1, 3],
+        'scale_pos_weight': [scale_pos_weight],
+    }
+except Exception as e:
+    print(f"Error defining parameter grid: {e}")
+    raise
+
+simple_param_grid_rf = {
+    'n_estimators': [1000, 2000, 3000],
+    'max_depth': [20, 30, None],
+    'min_samples_split': [2, 5],
+    'min_samples_leaf': [1, 2],
+    'max_features': ['sqrt'],
+    'class_weight': ['balanced', 'balanced_subsample'],
+}
+
+simple_param_grid_dt = {
+    'max_depth': [10, 20, 30, None],
+    'min_samples_split': [2, 5, 10],
+    'min_samples_leaf': [1, 2, 4],
+    'criterion': ['gini', 'entropy'],
+    'splitter': ['best'],
+    'class_weight': ['balanced'],
+}
 xgb_params = {
-    'n_estimators': 100,
-    'max_depth': 5,
-    'learning_rate': 0.1,
+    'n_estimators': 3000,
+    'max_depth': 30,
+    'learning_rate': 0.01,
+    'subsample': 0.8,
+    'colsample_bytree': 0.8,
     'random_state': 42,
-    'eval_metric': 'logloss'
+    'eval_metric': 'logloss',
+    'scale_pos_weight': scale_pos_weight # Apply calculated weight
 }
 
 if USE_GPU:

@@ -1,7 +1,7 @@
 XGBOOST TREE STATISTICS
 ================================================================================
 
-Total number of trees: 100
-Average tree depth: 5.00
+Total number of trees: 500
+Average tree depth: 4.99
 Max tree depth: 5
-Min tree depth: 5
+Min tree depth: 4

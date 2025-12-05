@@ -3,22 +3,22 @@ DECISION TREE MODEL - EVALUATION METRICS
 
 PERFORMANCE METRICS:
 ----------------------------------------
-Accuracy:  0.6818
-Precision: 0.6190
-Recall:    0.2407
-F1-Score:  0.3467
-ROC-AUC:   0.8066
+Accuracy:  0.7078
+Precision: 0.6000
+Recall:    0.5000
+F1-Score:  0.5455
+ROC-AUC:   0.7908
 
 CONFUSION MATRIX:
 ----------------------------------------
-[[92  8]
- [41 13]]
+[[82 18]
+ [27 27]]
 
 DETAILED CLASSIFICATION REPORT:
 ----------------------------------------
               precision    recall  f1-score     support
-No Diabetes    0.691729  0.920000  0.789700  100.000000
-Diabetes       0.619048  0.240741  0.346667   54.000000
-accuracy       0.681818  0.681818  0.681818    0.681818
-macro avg      0.655388  0.580370  0.568183  154.000000
-weighted avg   0.666244  0.681818  0.634350  154.000000
+No Diabetes    0.752294  0.820000  0.784689  100.000000
+Diabetes       0.600000  0.500000  0.545455   54.000000
+accuracy       0.707792  0.707792  0.707792    0.707792
+macro avg      0.676147  0.660000  0.665072  154.000000
+weighted avg   0.698892  0.707792  0.700802  154.000000

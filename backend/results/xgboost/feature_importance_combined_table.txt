@@ -3,11 +3,11 @@ FEATURE IMPORTANCE RANKING - XGBOOST (MULTIPLE METRICS)
 
 Rank   Feature                        Gain            Weight          Cover          
 ----------------------------------------------------------------------------------------------------
-1      Glucose                        5.8431          296             37.4288        
-2      Age                            2.9296          128             30.6864        
-3      BMI                            2.7346          281             32.4777        
-4      Insulin                        1.7443          123             22.1422        
-5      SkinThickness                  1.6234          105             12.9715        
-6      DiabetesPedigreeFunction       1.5764          309             13.6907        
-7      BloodPressure                  1.5156          176             17.2656        
-8      Pregnancies                    1.3858          142             14.5921        
+1      Glucose                        7.0154          887             35.7826        
+2      Age                            3.4793          537             26.2877        
+3      BMI                            3.2771          944             26.4808        
+4      Insulin                        2.8511          288             29.9967        
+5      Pregnancies                    2.4486          339             23.3120        
+6      SkinThickness                  2.4222          233             19.4124        
+7      BloodPressure                  2.2426          369             20.1402        
+8      DiabetesPedigreeFunction       2.2212          939             18.8196        

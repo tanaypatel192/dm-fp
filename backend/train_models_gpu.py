@@ -63,26 +63,41 @@ def main():
         print()
         
         # Simplified parameter grids for faster training
+        # Expanded parameter grids for better performance
+        # Calculate scale_pos_weight for XGBoost
+        # scale_pos_weight = count(negative) / count(positive)
+        n_negative = len(y_train) - sum(y_train)
+        n_positive = sum(y_train)
+        scale_pos_weight = n_negative / n_positive
+        logger.info(f"Calculated scale_pos_weight: {scale_pos_weight:.2f}")
+
+        # Aggressive parameter grids for maximum precision
         simple_param_grid_xgb = {
-            'n_estimators': [100, 200],
-            'max_depth': [5, 7],
-            'learning_rate': [0.05, 0.1],
+            'n_estimators': [1000, 2000, 3000],
+            'max_depth': [10, 20, 30],
+            'learning_rate': [0.01, 0.05, 0.1],
             'subsample': [0.8, 1.0],
             'colsample_bytree': [0.8, 1.0],
+            'min_child_weight': [1, 3],
+            'scale_pos_weight': [scale_pos_weight], # Handle class imbalance
         }
         
         simple_param_grid_rf = {
-            'n_estimators': [100, 200],
-            'max_depth': [None, 10, 20],
+            'n_estimators': [1000, 2000, 3000],
+            'max_depth': [20, 30, None],
             'min_samples_split': [2, 5],
             'min_samples_leaf': [1, 2],
+            'max_features': ['sqrt'],
+            'class_weight': ['balanced', 'balanced_subsample'], # Handle class imbalance
         }
         
         simple_param_grid_dt = {
-            'max_depth': [None, 5, 10, 15],
+            'max_depth': [10, 20, 30, None],
             'min_samples_split': [2, 5, 10],
             'min_samples_leaf': [1, 2, 4],
-            'criterion': ['gini', 'entropy']
+            'criterion': ['gini', 'entropy'],
+            'splitter': ['best'],
+            'class_weight': ['balanced'], # Handle class imbalance
         }
         
         # 1. Train XGBoost with GPU
@@ -98,7 +113,8 @@ def main():
             output_dir='results/xgboost',
             param_grid=simple_param_grid_xgb,
             cv=5,  # Reduced for faster training
-            use_gpu=True  # ENABLE GPU!
+            use_gpu=True,  # ENABLE GPU!
+            scoring='precision'  # Optimize for Precision
         )
         logger.info("✓ XGBoost model trained and saved (GPU accelerated)")
         
@@ -111,7 +127,7 @@ def main():
         
         from src.random_forest_model import RandomForestModel
         rf_model = RandomForestModel(random_state=42)
-        rf_model.train(X_train, y_train, param_grid=simple_param_grid_rf, cv=5, n_jobs=-1)
+        rf_model.train(X_train, y_train, param_grid=simple_param_grid_rf, cv=5, n_jobs=-1, scoring='precision')
         rf_model.evaluate(X_test, y_test, output_dir='results/random_forest')
         rf_model.save_model(output_dir='models')
         logger.info("✓ Random Forest model trained and saved (CPU)")
@@ -125,7 +141,7 @@ def main():
         
         from src.decision_tree_model import DecisionTreeModel
         dt_model = DecisionTreeModel(random_state=42)
-        dt_model.train(X_train, y_train, param_grid=simple_param_grid_dt, cv=5, n_jobs=-1)
+        dt_model.train(X_train, y_train, param_grid=simple_param_grid_dt, cv=5, n_jobs=-1, scoring='precision')
         dt_model.evaluate(X_test, y_test, output_dir='results/decision_tree')
         dt_model.save_model(output_dir='models')
         logger.info("✓ Decision Tree model trained and saved (CPU)")

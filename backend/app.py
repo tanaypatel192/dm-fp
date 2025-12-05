@@ -865,18 +865,22 @@ async def predict(
 
         # Make prediction
         prediction = int(model.predict(processed_data)[0])
-        probability = float(model.predict_proba(processed_data)[0][1])
+        proba_array = model.predict_proba(processed_data)[0]
+        # Always show probability of diabetes (class 1) for consistency
+        probability_diabetes = float(proba_array[1])
+        # Confidence is the probability of the predicted class
+        confidence = float(proba_array[prediction])
 
-        # Calculate risk level
-        risk_level = calculate_risk_level(probability)
+        # Calculate risk level based on diabetes probability
+        risk_level = calculate_risk_level(probability_diabetes)
 
         # Prepare response
         response = PredictionOutput(
             prediction=prediction,
             prediction_label="Diabetes" if prediction == 1 else "No Diabetes",
-            probability=round(probability, 4),
+            probability=round(probability_diabetes, 4),
             risk_level=risk_level,
-            confidence=round(max(model.predict_proba(processed_data)[0]), 4),
+            confidence=round(confidence, 4),
             model_used=model_name
         )
 
@@ -918,14 +922,16 @@ async def predict_batch(
         for patient in batch_input.patients:
             processed_data = preprocess_input(patient)
             prediction = int(model.predict(processed_data)[0])
-            probability = float(model.predict_proba(processed_data)[0][1])
+            proba_array = model.predict_proba(processed_data)[0]
+            probability_diabetes = float(proba_array[1])
+            confidence = float(proba_array[prediction])
 
             predictions.append(PredictionOutput(
                 prediction=prediction,
                 prediction_label="Diabetes" if prediction == 1 else "No Diabetes",
-                probability=round(probability, 4),
-                risk_level=calculate_risk_level(probability),
-                confidence=round(max(model.predict_proba(processed_data)[0]), 4),
+                probability=round(probability_diabetes, 4),
+                risk_level=calculate_risk_level(probability_diabetes),
+                confidence=round(confidence, 4),
                 model_used=model_name
             ))
 
@@ -984,15 +990,18 @@ async def predict_explain(patient: PatientInput):
         for model_name, model in models_cache.items():
             try:
                 prediction = int(model.predict(processed_data)[0])
-                probability = float(model.predict_proba(processed_data)[0][1])
-                probabilities.append(probability)
-                confidence = float(max(model.predict_proba(processed_data)[0]))
+                proba_array = model.predict_proba(processed_data)[0]
+                # Always show probability of diabetes (class 1) for consistency
+                probability_diabetes = float(proba_array[1])
+                probabilities.append(probability_diabetes)
+                # Confidence is the probability of the predicted class
+                confidence = float(proba_array[prediction])
 
                 model_predictions.append(ModelPredictionDetail(
                     model_name=model_name,
                     prediction=prediction,
                     prediction_label="Diabetes" if prediction == 1 else "No Diabetes",
-                    probability=round(probability, 4),
+                    probability=round(probability_diabetes, 4),
                     confidence=round(confidence, 4)
                 ))
 

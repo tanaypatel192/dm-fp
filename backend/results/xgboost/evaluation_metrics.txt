@@ -6,29 +6,30 @@ MODEL CONFIGURATION:
 GPU Acceleration: True
 Tree Method: hist
 colsample_bytree: 1.0
-learning_rate: 0.05
+learning_rate: 0.01
 max_depth: 5
-n_estimators: 100
-subsample: 1.0
+min_child_weight: 3
+n_estimators: 500
+subsample: 0.7
 
 PERFORMANCE METRICS:
 ----------------------------------------
-Accuracy:  0.7468
-Precision: 0.6531
-Recall:    0.5926
-F1-Score:  0.6214
-ROC-AUC:   0.8202
+Accuracy:  0.7532
+Precision: 0.6739
+Recall:    0.5741
+F1-Score:  0.6200
+ROC-AUC:   0.8281
 
 CONFUSION MATRIX:
 ----------------------------------------
-[[83 17]
- [22 32]]
+[[85 15]
+ [23 31]]
 
 DETAILED CLASSIFICATION REPORT:
 ----------------------------------------
               precision    recall  f1-score     support
-No Diabetes    0.790476  0.830000  0.809756  100.000000
-Diabetes       0.653061  0.592593  0.621359   54.000000
-accuracy       0.746753  0.746753  0.746753    0.746753
-macro avg      0.721769  0.711296  0.715558  154.000000
-weighted avg   0.742292  0.746753  0.743695  154.000000
+No Diabetes    0.787037  0.850000  0.817308  100.000000
+Diabetes       0.673913  0.574074  0.620000   54.000000
+accuracy       0.753247  0.753247  0.753247    0.753247
+macro avg      0.730475  0.712037  0.718654  154.000000
+weighted avg   0.747370  0.753247  0.748122  154.000000

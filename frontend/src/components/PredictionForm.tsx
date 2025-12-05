@@ -150,14 +150,14 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
   onPredictionStart,
 }) => {
   const [formData, setFormData] = useState<PatientInput>({
-    Pregnancies: 0,
-    Glucose: 100,
+    Pregnancies: 1,
+    Glucose: 120,
     BloodPressure: 70,
     SkinThickness: 20,
-    Insulin: 80,
-    BMI: 25,
-    DiabetesPedigreeFunction: 0.5,
-    Age: 30,
+    Insulin: 79,
+    BMI: 32,
+    DiabetesPedigreeFunction: 0.472,
+    Age: 33,
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -194,10 +194,16 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
 
     // Validate on change
     const error = validateField(name, value);
-    setErrors((prev) => ({
-      ...prev,
-      [name]: error,
-    }));
+    setErrors((prev) => {
+      const newErrors = { ...prev };
+      if (error) {
+        newErrors[name] = error;
+      } else {
+        // Remove the error if validation passes
+        delete newErrors[name];
+      }
+      return newErrors;
+    });
   };
 
   // Load example patient
@@ -363,23 +369,26 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
             max={info.max}
             step={info.step}
             value={value}
-            onChange={(e) => handleInputChange(name, parseFloat(e.target.value) || 0)}
-            className={`input w-24 text-center ${
-              error ? 'border-danger-500 focus:ring-danger-500' : ''
-            }`}
+            onChange={(e) => {
+              const val = e.target.value === '' ? info.min : parseFloat(e.target.value);
+              if (!isNaN(val)) {
+                handleInputChange(name, val);
+              }
+            }}
+            className={`input w-24 text-center ${error ? 'border-danger-500 focus:ring-danger-500' : ''
+              }`}
           />
         </div>
 
         {/* Mini visualization bar */}
         <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
           <div
-            className={`h-full transition-all duration-300 ${
-              value < info.normal.max
-                ? 'bg-success-500'
-                : value < info.max * 0.7
+            className={`h-full transition-all duration-300 ${value < info.normal.max
+              ? 'bg-success-500'
+              : value < info.max * 0.7
                 ? 'bg-warning-500'
                 : 'bg-danger-500'
-            }`}
+              }`}
             style={{ width: `${Math.min(progress, 100)}%` }}
           />
         </div>
@@ -465,7 +474,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
           variant="primary"
           size="lg"
           loading={loading}
-          disabled={loading || Object.keys(errors).length > 0}
+          disabled={loading || Object.values(errors).some(err => err !== '')}
           icon={<FiRefreshCw />}
         >
           {loading ? 'Analyzing...' : 'Predict Diabetes Risk'}

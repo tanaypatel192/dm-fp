@@ -16,6 +16,8 @@ import {
   FiZap,
   FiAward,
 } from 'react-icons/fi';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
 import Plot from 'react-plotly.js';
@@ -92,9 +94,49 @@ const PredictionResults: React.FC<PredictionResultsProps> = ({ result }) => {
   const riskStyle = getRiskColor(result.risk_level);
 
   // Export functionality
-  const handleExportPDF = () => {
-    // In a real implementation, use jsPDF or similar library
-    alert('PDF export would be implemented with jsPDF library');
+  // Export functionality
+  const handleExportPDF = async () => {
+    if (!resultsRef.current) return;
+
+    try {
+      const canvas = await html2canvas(resultsRef.current, {
+        scale: 2, // Better quality
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff', // Ensure white background
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Add first page
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      // Add subsequent pages if content is long
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`diabetes-prediction-results-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      alert('Failed to export PDF. Please try again.');
+    }
   };
 
   const handleSendEmail = () => {
@@ -153,25 +195,25 @@ const PredictionResults: React.FC<PredictionResultsProps> = ({ result }) => {
   // Feature importance bar chart
   const featureImportanceData = result.shap_explanation
     ? {
-        labels: result.shap_explanation.feature_contributions
-          .slice(0, 10)
-          .map((c) => c.feature),
-        datasets: [
-          {
-            label: 'Feature Importance',
-            data: result.shap_explanation.feature_contributions
-              .slice(0, 10)
-              .map((c) => Math.abs(c.contribution)),
-            backgroundColor: result.shap_explanation.feature_contributions
-              .slice(0, 10)
-              .map((c) => (c.contribution > 0 ? 'rgba(239, 68, 68, 0.7)' : 'rgba(34, 197, 94, 0.7)')),
-            borderColor: result.shap_explanation.feature_contributions
-              .slice(0, 10)
-              .map((c) => (c.contribution > 0 ? 'rgb(239, 68, 68)' : 'rgb(34, 197, 94)')),
-            borderWidth: 2,
-          },
-        ],
-      }
+      labels: result.shap_explanation.feature_contributions
+        .slice(0, 10)
+        .map((c) => c.feature),
+      datasets: [
+        {
+          label: 'Feature Importance',
+          data: result.shap_explanation.feature_contributions
+            .slice(0, 10)
+            .map((c) => Math.abs(c.contribution)),
+          backgroundColor: result.shap_explanation.feature_contributions
+            .slice(0, 10)
+            .map((c) => (c.contribution > 0 ? 'rgba(239, 68, 68, 0.7)' : 'rgba(34, 197, 94, 0.7)')),
+          borderColor: result.shap_explanation.feature_contributions
+            .slice(0, 10)
+            .map((c) => (c.contribution > 0 ? 'rgb(239, 68, 68)' : 'rgb(34, 197, 94)')),
+          borderWidth: 2,
+        },
+      ],
+    }
     : null;
 
   const featureImportanceOptions = {
@@ -273,9 +315,8 @@ const PredictionResults: React.FC<PredictionResultsProps> = ({ result }) => {
   return (
     <div
       ref={resultsRef}
-      className={`space-y-6 transition-all duration-700 ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-      }`}
+      className={`space-y-6 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+        }`}
     >
       {/* Export Actions Bar */}
       <div className="flex flex-wrap gap-3 justify-end">
@@ -392,9 +433,8 @@ const PredictionResults: React.FC<PredictionResultsProps> = ({ result }) => {
                 return (
                   <tr
                     key={model.model_name}
-                    className={`border-b border-gray-100 dark:border-gray-800 ${
-                      isConsensus ? 'bg-primary-50/30 dark:bg-primary-900/10' : ''
-                    }`}
+                    className={`border-b border-gray-100 dark:border-gray-800 ${isConsensus ? 'bg-primary-50/30 dark:bg-primary-900/10' : ''
+                      }`}
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
@@ -408,11 +448,10 @@ const PredictionResults: React.FC<PredictionResultsProps> = ({ result }) => {
                     </td>
                     <td className="py-3 px-4 text-center">
                       <span
-                        className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                          model.prediction === 1
+                        className={`px-3 py-1 rounded-full text-sm font-semibold ${model.prediction === 1
                             ? 'bg-danger-100 text-danger-800 dark:bg-danger-800 dark:text-danger-100'
                             : 'bg-success-100 text-success-800 dark:bg-success-800 dark:text-success-100'
-                        }`}
+                          }`}
                       >
                         {model.prediction_label}
                       </span>
@@ -426,13 +465,12 @@ const PredictionResults: React.FC<PredictionResultsProps> = ({ result }) => {
                     <td className="py-3 px-4">
                       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                         <div
-                          className={`h-full rounded-full ${
-                            model.probability < 0.3
+                          className={`h-full rounded-full ${model.probability < 0.3
                               ? 'bg-success-500'
                               : model.probability < 0.7
-                              ? 'bg-warning-500'
-                              : 'bg-danger-500'
-                          }`}
+                                ? 'bg-warning-500'
+                                : 'bg-danger-500'
+                            }`}
                           style={{ width: `${model.probability * 100}%` }}
                         />
                       </div>
@@ -450,11 +488,10 @@ const PredictionResults: React.FC<PredictionResultsProps> = ({ result }) => {
                 </td>
                 <td className="py-3 px-4 text-center">
                   <span
-                    className={`px-3 py-1 rounded-full text-sm font-bold ${
-                      result.ensemble_prediction === 1
+                    className={`px-3 py-1 rounded-full text-sm font-bold ${result.ensemble_prediction === 1
                         ? 'bg-danger-200 text-danger-900 dark:bg-danger-700 dark:text-danger-100'
                         : 'bg-success-200 text-success-900 dark:bg-success-700 dark:text-success-100'
-                    }`}
+                      }`}
                   >
                     {result.ensemble_label}
                   </span>
@@ -468,13 +505,12 @@ const PredictionResults: React.FC<PredictionResultsProps> = ({ result }) => {
                 <td className="py-3 px-4">
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                     <div
-                      className={`h-full rounded-full ${
-                        result.ensemble_probability < 0.3
+                      className={`h-full rounded-full ${result.ensemble_probability < 0.3
                           ? 'bg-success-600'
                           : result.ensemble_probability < 0.7
-                          ? 'bg-warning-600'
-                          : 'bg-danger-600'
-                      }`}
+                            ? 'bg-warning-600'
+                            : 'bg-danger-600'
+                        }`}
                       style={{ width: `${result.ensemble_probability * 100}%` }}
                     />
                   </div>
@@ -583,11 +619,10 @@ const PredictionResults: React.FC<PredictionResultsProps> = ({ result }) => {
                       {factor.factor}
                     </h4>
                     <span
-                      className={`px-2 py-1 text-xs font-semibold rounded ${
-                        factor.risk_level.toLowerCase() === 'high'
+                      className={`px-2 py-1 text-xs font-semibold rounded ${factor.risk_level.toLowerCase() === 'high'
                           ? 'bg-danger-100 text-danger-800 dark:bg-danger-800 dark:text-danger-100'
                           : 'bg-warning-100 text-warning-800 dark:bg-warning-800 dark:text-warning-100'
-                      }`}
+                        }`}
                     >
                       {factor.risk_level} Risk
                     </span>
@@ -623,8 +658,8 @@ const PredictionResults: React.FC<PredictionResultsProps> = ({ result }) => {
                 rec.priority === 'High'
                   ? 'border-l-danger-500'
                   : rec.priority === 'Medium'
-                  ? 'border-l-warning-500'
-                  : 'border-l-primary-500';
+                    ? 'border-l-warning-500'
+                    : 'border-l-primary-500';
 
               return (
                 <div
@@ -633,11 +668,10 @@ const PredictionResults: React.FC<PredictionResultsProps> = ({ result }) => {
                   style={{ animationDelay: `${idx * 100}ms` }}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`mt-1 ${
-                      rec.priority === 'High' ? 'text-danger-600' :
-                      rec.priority === 'Medium' ? 'text-warning-600' :
-                      'text-primary-600'
-                    }`}>
+                    <div className={`mt-1 ${rec.priority === 'High' ? 'text-danger-600' :
+                        rec.priority === 'Medium' ? 'text-warning-600' :
+                          'text-primary-600'
+                      }`}>
                       {getRecommendationIcon(rec.category)}
                     </div>
                     <div className="flex-1">
@@ -646,13 +680,12 @@ const PredictionResults: React.FC<PredictionResultsProps> = ({ result }) => {
                           {rec.category}
                         </h4>
                         <span
-                          className={`px-2 py-1 text-xs font-semibold rounded ${
-                            rec.priority === 'High'
+                          className={`px-2 py-1 text-xs font-semibold rounded ${rec.priority === 'High'
                               ? 'bg-danger-100 text-danger-800 dark:bg-danger-800 dark:text-danger-100'
                               : rec.priority === 'Medium'
-                              ? 'bg-warning-100 text-warning-800 dark:bg-warning-800 dark:text-warning-100'
-                              : 'bg-primary-100 text-primary-800 dark:bg-primary-800 dark:text-primary-100'
-                          }`}
+                                ? 'bg-warning-100 text-warning-800 dark:bg-warning-800 dark:text-warning-100'
+                                : 'bg-primary-100 text-primary-800 dark:bg-primary-800 dark:text-primary-100'
+                            }`}
                         >
                           {rec.priority} Priority
                         </span>
@@ -699,11 +732,10 @@ const PredictionResults: React.FC<PredictionResultsProps> = ({ result }) => {
                     <span className="text-sm font-semibold">Case {idx + 1}</span>
                   </div>
                   <span
-                    className={`px-2 py-1 text-xs font-semibold rounded ${
-                      patient.outcome === 1
+                    className={`px-2 py-1 text-xs font-semibold rounded ${patient.outcome === 1
                         ? 'bg-danger-100 text-danger-800 dark:bg-danger-800 dark:text-danger-100'
                         : 'bg-success-100 text-success-800 dark:bg-success-800 dark:text-success-100'
-                    }`}
+                      }`}
                   >
                     {patient.outcome_label}
                   </span>
